@@ -421,7 +421,9 @@ int main(int argc, char *argv[])
 				        	RotateResult_8X->h/8
 			        	);
 				        
-				        IMG_SavePNG(output_filename,SaveSurface,9);
+				        //IMG_SavePNG(output_filename, SaveSurface,9);
+				        //IMG_SavePNG(output_filename, Image2Rotate, 9);
+				        IMG_SavePNG(output_filename, RotateResult_8X, 9);
 
 				        show_save_msg = TRUE;
 				        showcounter=1500;

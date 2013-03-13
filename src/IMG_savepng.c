@@ -1,318 +1,404 @@
-/*
-  Based on zlib license - see http://www.gzip.org/zlib/zlib_license.html
-
-  This software is provided 'as-is', without any express or implied
-  warranty.  In no event will the authors be held liable for any damages
-  arising from the use of this software.
-
-  Permission is granted to anyone to use this software for any purpose,
-  including commercial applications, and to alter it and redistribute it
-  freely, subject to the following restrictions:
-
-  1. The origin of this software must not be misrepresented; you must not
-     claim that you wrote the original software. If you use this software
-     in a product, an acknowledgment in the product documentation would be
-     appreciated but is not required.
-  2. Altered source versions must be plainly marked as such, and must not be
-     misrepresented as being the original software.
-  3. This notice may not be removed or altered from any source distribution.
-
-  "Philip D. Bober" <wildfire1138@mchsi.com>
-*/
-
-/**
- * 4/17/04 - IMG_SavePNG & IMG_SavePNG_RW - Philip D. Bober
- * 11/08/2004 - Compr fix, levels -1,1-7 now work - Tyler Montbriand
+/** \file 
+ *  This file contains the implementation of the SDL png image save facility. This
+ *  code allows any SDL_Surface to be saved as a png to a file, or to be written
+ *  as png formatted data via a SDL_RWops.
+ *
+ *  \author Chris &lt;chris@starforge.co.uk&gt;
+ *  \version 0.1
+ *  \date 6 Aug 2010  
+ *  \todo Support colorkey in true color modes?
  */
+/*  
+ * Copyright (c) 2010, Chris Page <chris@starforge.co.uk>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, 
+ * are permitted provided that the following conditions are met:
+ *
+ *  * Redistributions of source code must retain the above copyright notice, this 
+ *    list of conditions and the following disclaimer.
+ *
+ *  * Redistributions in binary form must reproduce the above copyright notice, this 
+ *    list of conditions and the following disclaimer in the documentation and/or 
+ *    other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+ * SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
-#include <SDL/SDL.h>
-#include <SDL/SDL_byteorder.h>
 #include <png.h>
-#include "IMG_savepng.h"
+#include <IMG_savepng.h>
+#include <IMG_saveend.h>
 
-int IMG_SavePNG(const char *file, SDL_Surface *surf,int compression){
-	SDL_RWops *fp;
-	int ret;
 
-	fp=SDL_RWFromFile(file,"wb");
+/* =============================================================================
+ *  png writer implementationn
+ */
 
-	if( fp == NULL ) {
-		return (-1);
-	}
+/** Write png data to a RWops data source. This is a custom write callback that 
+ *  will be invoked by libpng when it needs to write data from its internal 
+ *  buffer.
+ *
+ *  \param png_ptr A pointer to the png write structure.
+ *  \param data    A pointer to the png data buffer.
+ *  \param length  The number of bytes to write.
+ */
+static void sdlrw_write_png(png_structp png_ptr, png_bytep data, png_size_t length)
+{
+    // Obtain the RWops stored in the write structure, so we have somewhere to write to.
+    SDL_RWops *rwops = (SDL_RWops *)png_get_io_ptr(png_ptr);
 
-	ret=IMG_SavePNG_RW(fp,surf,compression);
-	SDL_RWclose(fp);
-	return ret;
+    // write, and fallover if there's a problem writing the whole buffer
+    if(SDL_RWwrite(rwops, data, 1, length) != length) {
+        png_error(png_ptr, "Write was not able to write all png data");
+    }
 }
 
-int IMG_SavePNG_NumberIncrease(SDL_Surface *surf,int compression){
-	SDL_RWops *fp;
-	int ret;
-	int filenumber=0;
-	int check=0;
-	char file[50];
+
+/* =============================================================================
+ *  Pixel format handling code
+ */
+
+/** Enumeration of pixel format usabilities. This is used to assist in determining
+ *  whether the surface to be savd is usable as-is, or whether it needs to be 
+ *  converted to a usable format first.
+ */
+typedef enum 
+{
+    PF_UNUSABLE,       //!< Surface format is unusable and must be converted.
+    PF_UNUSABLE_ALPHA, //!< Surface format is unusable, and it has an alpha channel.
+    PF_PALETTE,        //!< Surface is palettised, and is probably savable as-is
+    PF_USABLE,         //!< Surface is in 24 bit, RGB format (network byte order)
+    PF_USABLE_ALPHA    //!< Surface is in 32 bit, RGBA format (network byte order)
+} usability;
 
 
-        while(!check)
-        {
-            //skriv in nuvarande skrärmdump
-            sprintf(file,"screenshots/screenshot_%d.png",filenumber);
+/** Determine whether the specified surface pixel format is suitable for direct use.
+ *  This will inspect the surface's pixel format information and work out whether it
+ *  can be used as-is (PF_PALETTE, PF_USABLE, or PF_USABLE_ALPHA will be returned)
+ *  or whether it is unusable in its present form and needs to be converted to a 
+ *  usable format (PF_USABLE or PF_USABLE_ALPHA will be returned).
+ *
+ *  \param surf The surface to inspect.
+ *  \return A usability code indicating the suitability of the surface.
+ */
+static usability get_format_usability(SDL_Surface *surf)
+{
+    SDL_PixelFormat *fmt = surf -> format;
 
-            //kolla ifall vi kan öppna filen
-            fp=SDL_RWFromFile(file,"rb");
+    // If the surfaces uses less than 8 bits per pixel, mark it as unusable
+    // and let SDL deal with it, as it'll be too much headache otherwise
+    if(fmt -> BitsPerPixel < 8) {
+        return PF_UNUSABLE;
 
-                //finns den inte så är det detta nummer vi ska ge filen
-                if(fp == NULL)
-                {
-                    check=1;
-                }
-                else{
-                    filenumber++;
-                }
+    // 8 bit image should be palettised..
+    } else if((fmt -> BitsPerPixel == 8) && fmt -> palette) {
+        return PF_PALETTE;
+
+    // less than 24 bit formats aren't directly usable
+    } else if(fmt -> BitsPerPixel < 24) {
+        // if Aloss is 8, there's no alpha channel
+        return (fmt -> Aloss == 8) ? PF_UNUSABLE : PF_UNUSABLE_ALPHA; 
+
+    // if it's 24 bits per pixel, with usable masks, it's usable
+    } else if(fmt -> BitsPerPixel == 24) {
+        // RGB format, without alpha channel
+        if(fmt -> Rmask == RMASK24 && fmt -> Gmask == GMASK24 && fmt -> Bmask == BMASK24 && fmt -> Aloss == 8) {
+            return PF_USABLE;
+
+        // Hmm, masks aren't good, check for alpha channel (this will be the normal case on little-endian systems)
+        } else if(fmt -> Aloss == 8){
+            return PF_UNUSABLE;
+
+        // Masks don't match, and by some weirdness we have some alpha, so...
+        } else {
+            return PF_UNUSABLE_ALPHA;
         }
 
-	fp=SDL_RWFromFile(file,"wb");
+    // Similarly, we can cope with 32 bit, if the masks are sensible
+    } else if(fmt -> BitsPerPixel == 32) {
+        // RGBA format
+        if(fmt -> Rmask == RMASK32 && fmt -> Gmask == GMASK32 && fmt -> Bmask == BMASK32 && fmt -> Amask == AMASK32) {
+            return PF_USABLE_ALPHA;
+        } else {
+            return PF_UNUSABLE_ALPHA;
+        }
+    }
 
-	if( fp == NULL ) {
-		return (-1);
-	}
+    // Get here and we don't know what the hell is going on, so let SDL deal 
+    return PF_UNUSABLE;
+}
+        
 
-	ret=IMG_SavePNG_RW(fp,surf,compression);
-	SDL_RWclose(fp);
-	return ret;
+/** Create a copy of an SDL surface using a bit format that can be fed straight
+ *  to libpng. This will create a surface in 24 bit R, G, B or 32bit R, G, B, A
+ *  so that libpng can process it directly, avoiding the need for on-the-fly
+ *  format conversion shenanigans.
+ *
+ *  \param surf  The surface to convert.
+ *  \param alpha True if the converted surface should have an alpha channel.
+ *  \return A pointer to a copy of the surface in the usable format. The caller must
+ *          free this surface when done with it.
+ */
+static SDL_Surface *make_usable_format(SDL_Surface *surf, int alpha)
+{
+    // Yes, it's probably horrible to just straight up declare these two, but ffs
+    // it takes up all of 80 bytes of stack space for these...
+    SDL_PixelFormat pf_temp24 = { NULL, 24, 3, 
+                                  0, 0, 0, 8, 
+                                  RSHIFT24, GSHIFT24, BSHIFT24, 0,
+                                  RMASK24, GMASK24, BMASK24, 0,
+                                  0, 255 };
+    SDL_PixelFormat pf_temp32 = { NULL, 32, 4, 
+                                  0, 0, 0, 0, 
+                                  RSHIFT32, GSHIFT32, BSHIFT32, ASHIFT32,
+                                  RMASK32, GMASK32, BMASK32, AMASK32,
+                                  0, 255 };
+
+    // Make a copy of our errant surface
+    SDL_Surface *rgb_surf = SDL_ConvertSurface(surf, alpha ? &pf_temp32 : &pf_temp24, SDL_SWSURFACE);
+
+    return rgb_surf;
 }
 
-static void png_write_data(png_structp png_ptr,png_bytep data, png_size_t length){
-	SDL_RWops *rp = (SDL_RWops*) png_get_io_ptr(png_ptr);
-	SDL_RWwrite(rp,data,1,length);
+
+/** Write out the PLTE (and possibly tRNS) chunk to the png. This will create the
+ *  palette data to set in the PLTE chunk and set it, and if the colorkey is set
+ *  for the surface an appropriate tRNS chunk is generated.
+ *
+ *  \param png_ptr  A pointer to the png write structure.
+ *  \param info_ptr A pointer to the png info structure.
+ *  \param surf     The surface that is being written to the png.
+ *  \return -1 on error, 0 if the palette chunk was written without problems.
+ */
+static int write_palette_chunk(png_structp png_ptr, png_infop info_ptr, SDL_Surface *surf)
+{
+    png_colorp palette;
+    Uint8     *alphas;
+    int        slot;
+
+    SDL_PixelFormat *fmt = surf -> format;
+    SDL_Color *sourcepal = fmt -> palette -> colors;
+
+    // Write the image header first...
+    png_set_IHDR(png_ptr, info_ptr, surf -> w, surf -> h, 8, PNG_COLOR_TYPE_PALETTE, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+
+    // now sort out the palette
+    if(!(palette = (png_colorp)malloc(fmt -> palette -> ncolors * sizeof(png_color)))) {
+        SDL_SetError("Unable to create memory for palette storage");
+        return -1;
+    }
+
+    // Copy the palette over. Can't just use a straight 
+    // memcpy as sdl palettes have pad bytes.
+    for(slot = 0; slot < fmt -> palette -> ncolors; ++slot) {
+        memcpy(&palette[slot], &sourcepal[slot], 3);
+    }
+    
+    // Set it...
+    png_set_PLTE(png_ptr, info_ptr, palette, fmt -> palette -> ncolors);
+
+    // Done with the palette now
+    free(palette);
+
+    // If we have a colour key, we need to set up the alphas for each palette colour
+    if(surf -> flags & SDL_SRCCOLORKEY) {
+        // According the the PNG spec (section 4.2.1.1) we only need enough entries
+        // to store transparencies up to the transparent pixel.
+        if(!(alphas = (Uint8 *)malloc((fmt -> colorkey + 1) * sizeof(Uint8)))) {
+            SDL_SetError("Unable to create memory for transparency storage");
+            return -1;
+        }
+
+        // Set all of the alpha values to full
+        memset(alphas, 255, (fmt -> colorkey + 1) * sizeof(Uint8));
+
+        // And handle the transparent pixel
+        alphas[fmt -> colorkey] = 0;
+
+        // Write the chunk, and then we're done with the transparencies
+        png_set_tRNS(png_ptr, info_ptr, alphas, fmt -> colorkey + 1, NULL);
+        free(alphas);
+    }
+
+    return 0;
 }
 
-int IMG_SavePNG_RW(SDL_RWops *src, SDL_Surface *surf,int compression){
+
+/* =============================================================================
+ *  exposed code
+ */
+
+/** Write the specified surface to a file at the requested compression.
+ *
+ *  \param filename    The name of the file to save to.
+ *  \param surf        The surface to write as a png.
+ *  \param compression The compression level to write the png at. Set to -1 to use
+ *                     zlib's default compression, othewise this should be in the
+ *                     range 0 (no compression) to Z_BEST_COMPRESSION (usually 9).
+ *  \return -1 on error, 0 if the png was saved successfully.
+ */
+int IMG_SavePNG(const char *filename, SDL_Surface *surf, int compression)
+{
+    SDL_RWops *out;
+    
+    // Open a RWops so we can write to a file using IMG_SavePNG_RW
+    if(!(out = SDL_RWFromFile(filename, "wb"))) {
+        return (-1);
+    }
+
+    // Write the png out...
+    int result = IMG_SavePNG_RW(out, surf, compression);
+
+    // and we're done
+    SDL_RWclose(out);
+    return result;
+}
+
+
+/** Write the specified surface to a SDL RWops data source at the requested 
+ *  compression. This function writes the specified surface pixels to the RWops
+ *  as png data, where the RWops goes to shouldn't actually matter to this.
+ *
+ *  \param dest        The SDL_RWops to write the surface to.
+ *  \param surf        The surface to write as a png.
+ *  \param compression The compression level to write the png at. Set to -1 to use
+ *                     zlib's default compression, othewise this should be in the
+ *                     range 0 (no compression) to Z_BEST_COMPRESSION (usually 9).
+ *  \return -1 on error, 0 if the png was saved successfully.
+ */
+int IMG_SavePNG_RW(SDL_RWops *dest, SDL_Surface *surf, int compression) 
+{
 	png_structp png_ptr;
 	png_infop info_ptr;
-	SDL_PixelFormat *fmt=NULL;
-	SDL_Surface *tempsurf=NULL;
-	int ret,funky_format,used_alpha;
-	unsigned int i,temp_alpha=0;
-	png_colorp palette;
-	Uint8 *palette_alpha=NULL;
-	png_byte **row_pointers=NULL;
-	png_ptr=NULL;info_ptr=NULL;palette=NULL;ret=-1;
-	funky_format=0;
+    SDL_Surface *outsurf = surf;
+    png_byte *line;
+    int y;
+    int start;         // rw position on invoking this function, for error handling
 
-	if( !src || !surf) {
-		goto savedone; /* Nothing to do. */
+    // Clamp the compression
+    if(compression < -1) compression = -1;
+    if(compression > Z_BEST_COMPRESSION) compression = Z_BEST_COMPRESSION;
+
+    // Do nothing if we have no destination or surface
+    if(!dest) {
+        SDL_SetError("No destination RWops specified.");
+        return -1;
+    }
+
+    if(!surf) { 
+        SDL_SetError("No surface specified.");
+        return -1; 
+    }
+
+    // Determine whether the surface is in a usable format, and if it is not
+    // attempt to create a usable copy of it. +
+    usability isUsable = get_format_usability(surf);
+    if(isUsable == PF_UNUSABLE || isUsable == PF_UNUSABLE_ALPHA) {
+        if(!(outsurf = make_usable_format(surf, isUsable == PF_UNUSABLE_ALPHA))) {
+            SDL_SetError("Unable to create temporary surface.");
+            return -1;
+        }
+    }
+
+    // Create the png write structure we need to generate the png output
+	if(!(png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL,NULL,NULL))) {
+		SDL_SetError("Unable to allocate png write structure");
+        return -1;
 	}
 
-	row_pointers=(png_byte **)malloc(surf->h * sizeof(png_byte*));
-	if (!row_pointers) {
-		SDL_SetError("Couldn't allocate memory for rowpointers");
-		goto savedone;
+    // And the corresponding info structure...
+    if(!(info_ptr = png_create_info_struct(png_ptr))) {
+		SDL_SetError("Unable to allocate png info structure");
+        png_destroy_write_struct(&png_ptr, NULL);
+        return -1;
 	}
 
-	png_ptr=png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL,NULL,NULL);
-	if (!png_ptr){
-		SDL_SetError("Couldn't allocate memory for PNG file");
-		goto savedone;
-	}
-	info_ptr= png_create_info_struct(png_ptr);
-	if (!info_ptr){
-		SDL_SetError("Couldn't allocate image information for PNG file");
-		goto savedone;
-	}
-	/* setup custom writer functions */
-	png_set_write_fn(png_ptr,(voidp)src,png_write_data,NULL);
+    // We need to use a custom writer, so that we can output to the RWops
+    png_set_write_fn(png_ptr, (void *)dest, sdlrw_write_png, NULL);
 
-	if (setjmp(png_jmpbuf(png_ptr))){
-		SDL_SetError("Unknown error writing PNG");
-		goto savedone;
-	}
+    // Determine the current position in the RW so we can restore it on errors
+    start = SDL_RWtell(dest);
 
-	if(compression>Z_BEST_COMPRESSION)
-		compression=Z_BEST_COMPRESSION;
+    // Mark the location we want to come out if there is a fatal error
+	if(setjmp(png_jmpbuf(png_ptr))) {
+        // Something bad happend in libpng or the write callback, clean up and give up.
+        png_destroy_write_struct(&png_ptr, &info_ptr);
 
-	if(compression == Z_NO_COMPRESSION) // No compression
-	{
-		png_set_filter(png_ptr,0,PNG_FILTER_NONE);
-		png_set_compression_level(png_ptr,Z_NO_COMPRESSION);
-	}
-        else if(compression<0) // Default compression
-		png_set_compression_level(png_ptr,Z_DEFAULT_COMPRESSION);
-        else
-		png_set_compression_level(png_ptr,compression);
+        // kill the temporary surface if we created one.
+        if(isUsable == PF_UNUSABLE || isUsable == PF_UNUSABLE_ALPHA) SDL_FreeSurface(outsurf);
 
-	fmt=surf->format;
-	if(fmt->BitsPerPixel==8){ /* Paletted */
-		png_set_IHDR(png_ptr,info_ptr,
-			surf->w,surf->h,8,PNG_COLOR_TYPE_PALETTE,
-			PNG_INTERLACE_NONE,PNG_COMPRESSION_TYPE_DEFAULT,
-			PNG_FILTER_TYPE_DEFAULT);
-		palette=(png_colorp) malloc(fmt->palette->ncolors * sizeof(png_color));
-		if (!palette) {
-			SDL_SetError("Couldn't create memory for palette");
-			goto savedone;
-		}
-		for (i=0;i<fmt->palette->ncolors;i++) {
-			palette[i].red=fmt->palette->colors[i].r;
-			palette[i].green=fmt->palette->colors[i].g;
-			palette[i].blue=fmt->palette->colors[i].b;
-		}
-		png_set_PLTE(png_ptr,info_ptr,palette,fmt->palette->ncolors);
-		if (surf->flags&SDL_SRCCOLORKEY) {
-			palette_alpha=(Uint8 *)malloc((fmt->colorkey+1)*sizeof(Uint8));
-			if (!palette_alpha) {
-				SDL_SetError("Couldn't create memory for palette transparency");
-				goto savedone;
-			}
-			/* FIXME: memset? */
-			for (i=0;i<(fmt->colorkey+1);i++) {
-				palette_alpha[i]=255;
-			}
-			palette_alpha[fmt->colorkey]=0;
-			png_set_tRNS(png_ptr,info_ptr,palette_alpha,fmt->colorkey+1,NULL);
-		}
-	}else{ /* Truecolor */
-		if (fmt->Amask) {
-			png_set_IHDR(png_ptr,info_ptr,
-				surf->w,surf->h,8,PNG_COLOR_TYPE_RGB_ALPHA,
-				PNG_INTERLACE_NONE,PNG_COMPRESSION_TYPE_DEFAULT,
-				PNG_FILTER_TYPE_DEFAULT);
-		} else {
-			png_set_IHDR(png_ptr,info_ptr,
-				surf->w,surf->h,8,PNG_COLOR_TYPE_RGB,
-				PNG_INTERLACE_NONE,PNG_COMPRESSION_TYPE_DEFAULT,
-				PNG_FILTER_TYPE_DEFAULT);
-		}
-	}
+        // Restore the position of the RWops to the location it was at when we started
+        SDL_RWseek(dest, start, RW_SEEK_SET);
+        SDL_SetError("PNG saving error, giving up.");
+        return -1;
+    }
+
+    // handle compression
+    if(compression == Z_NO_COMPRESSION) {
+        png_set_filter(png_ptr, 0, PNG_FILTER_NONE);
+        png_set_compression_level(png_ptr, Z_NO_COMPRESSION);
+    } else {
+        png_set_compression_level(png_ptr, compression);
+    }  
+
+    // sort out the header, which might include a palette...
+    if(isUsable == PF_PALETTE) {
+        if(write_palette_chunk(png_ptr, info_ptr, outsurf) == -1) {
+            png_destroy_write_struct(&png_ptr, &info_ptr);
+
+            // kill the temporary surface if we created one.
+            if(isUsable == PF_UNUSABLE || isUsable == PF_UNUSABLE_ALPHA) SDL_FreeSurface(outsurf);
+            
+            // Restore the position of the RWops to the location it was at when we started
+            SDL_RWseek(dest, start, RW_SEEK_SET);
+            return -1;
+        }
+
+    // not palettised, and with no alpha
+    } else if(isUsable == PF_USABLE || isUsable == PF_UNUSABLE) {
+        png_set_IHDR(png_ptr, info_ptr, outsurf -> w, outsurf -> h, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+
+    // not palettised, with alpha
+    } else {
+        png_set_IHDR(png_ptr, info_ptr, outsurf -> w, outsurf -> h, 8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    }
+
+    // info setup done, so write it out and we can get to image data.
 	png_write_info(png_ptr, info_ptr);
 
-	if (fmt->BitsPerPixel==8) { /* Paletted */
-		for(i=0;i<surf->h;i++){
-			row_pointers[i]= ((png_byte*)surf->pixels) + i*surf->pitch;
-		}
-		if(SDL_MUSTLOCK(surf)){
-			SDL_LockSurface(surf);
-		}
-		png_write_image(png_ptr, row_pointers);
-		if(SDL_MUSTLOCK(surf)){
-			SDL_UnlockSurface(surf);
-		}
-	}else{ /* Truecolor */
-		if(fmt->BytesPerPixel==3){
-			if(fmt->Amask){ /* check for 24 bit with alpha */
-				funky_format=1;
-			}else{
-				/* Check for RGB/BGR/GBR/RBG/etc surfaces.*/
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-				if(fmt->Rmask!=0xFF0000
-				|| fmt->Gmask!=0x00FF00
-				|| fmt->Bmask!=0x0000FF){
-#else
-				if(fmt->Rmask!=0x0000FF
-				|| fmt->Gmask!=0x00FF00
-				|| fmt->Bmask!=0xFF0000){
-#endif
-					funky_format=1;
-				}
-			}
-		}else if (fmt->BytesPerPixel==4){
-			if (!fmt->Amask) { /* check for 32bit but no alpha */
-				funky_format=1;
-			}else{
-				/* Check for ARGB/ABGR/GBAR/RABG/etc surfaces.*/
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-				if(fmt->Rmask!=0xFF000000
-				|| fmt->Gmask!=0x00FF0000
-				|| fmt->Bmask!=0x0000FF00
-				|| fmt->Amask!=0x000000FF){
-#else
-				if(fmt->Rmask!=0x000000FF
-				|| fmt->Gmask!=0x0000FF00
-				|| fmt->Bmask!=0x00FF0000
-				|| fmt->Amask!=0xFF000000){
-#endif
-					funky_format=1;
-				}
-			}
-		}else{ /* 555 or 565 16 bit color */
-			funky_format=1;
-		}
-		if (funky_format) {
-			/* Allocate non-funky format, and copy pixeldata in*/
-			if(fmt->Amask){
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-				tempsurf = SDL_CreateRGBSurface(SDL_SWSURFACE, surf->w, surf->h, 24,
-										0xff000000, 0x00ff0000, 0x0000ff00, 0x000000ff);
-#else
-				tempsurf = SDL_CreateRGBSurface(SDL_SWSURFACE, surf->w, surf->h, 24,
-										0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
-#endif
-			}else{
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-				tempsurf = SDL_CreateRGBSurface(SDL_SWSURFACE, surf->w, surf->h, 24,
-										0xff0000, 0x00ff00, 0x0000ff, 0x00000000);
-#else
-				tempsurf = SDL_CreateRGBSurface(SDL_SWSURFACE, surf->w, surf->h, 24,
-										0x000000ff, 0x0000ff00, 0x00ff0000, 0x00000000);
-#endif
-			}
-			if(!tempsurf){
-				SDL_SetError("Couldn't allocate temp surface");
-				goto savedone;
-			}
-			if(surf->flags&SDL_SRCALPHA){
-				temp_alpha=fmt->alpha;
-				used_alpha=1;
-				SDL_SetAlpha(surf,0,255); /* Set for an opaque blit */
-			}else{
-				used_alpha=0;
-			}
-			if(SDL_BlitSurface(surf,NULL,tempsurf,NULL)!=0){
-				SDL_SetError("Couldn't blit surface to temp surface");
-				SDL_FreeSurface(tempsurf);
-				goto savedone;
-			}
-			if (used_alpha) {
-				SDL_SetAlpha(surf,SDL_SRCALPHA,(Uint8)temp_alpha); /* Restore alpha settings*/
-			}
-			for(i=0;i<tempsurf->h;i++){
-				row_pointers[i]= ((png_byte*)tempsurf->pixels) + i*tempsurf->pitch;
-			}
-			if(SDL_MUSTLOCK(tempsurf)){
-				SDL_LockSurface(tempsurf);
-			}
-			png_write_image(png_ptr, row_pointers);
-			if(SDL_MUSTLOCK(tempsurf)){
-				SDL_UnlockSurface(tempsurf);
-			}
-			SDL_FreeSurface(tempsurf);
-		} else {
-			for(i=0;i<surf->h;i++){
-				row_pointers[i]= ((png_byte*)surf->pixels) + i*surf->pitch;
-			}
-			if(SDL_MUSTLOCK(surf)){
-				SDL_LockSurface(surf);
-			}
-			png_write_image(png_ptr, row_pointers);
-			if(SDL_MUSTLOCK(surf)){
-				SDL_UnlockSurface(surf);
-			}
-		}
-	}
+    // SDL does this lock/write/unlock when writing BMP so I'm fairly sure it's safe
+    if(SDL_MUSTLOCK(outsurf)) SDL_LockSurface(outsurf);
 
+    // Write out the png...
+    for(y = 0, line = (png_byte *)outsurf -> pixels; y < outsurf -> h; y++, line += outsurf -> pitch) {
+        png_write_row(png_ptr, line);
+    }
+
+    if(SDL_MUSTLOCK(outsurf)) SDL_UnlockSurface(outsurf);
+    
+    // kill the temporary surface if we created one.
+    if(isUsable == PF_UNUSABLE || isUsable == PF_UNUSABLE_ALPHA) SDL_FreeSurface(outsurf);
+
+    // All done by this point...
 	png_write_end(png_ptr, NULL);
-	ret=0; /* got here, so nothing went wrong. YAY! */
-
-savedone: /* clean up and return */
 	png_destroy_write_struct(&png_ptr,&info_ptr);
-	if (palette) {
-		free(palette);
-	}
-	if (palette_alpha) {
-		free(palette_alpha);
-	}
-	if (row_pointers) {
-		free(row_pointers);
-	}
-	return ret;
+
+    return 0;
 }
+
+#ifdef __cplusplus
+}
+#endif

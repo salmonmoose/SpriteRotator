@@ -286,7 +286,7 @@ void Surface_Copy(SDL_Surface *from, SDL_Surface *where,int x,int y,int w,int h)
 	Rdst.h=height;
 
 		//make the copy
-		SDL_BlitSurface(from, &Rsrc, where, &Rdst);
+	SDL_BlitSurface(from, &Rsrc, where, &Rdst);
 }
 
 void Create_tripple_buffer(int width,int height)

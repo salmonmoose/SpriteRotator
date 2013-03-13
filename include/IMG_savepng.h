@@ -1,55 +1,49 @@
-/*
-  Based on zlib license - see http://www.gzip.org/zlib/zlib_license.html
-
-  This software is provided 'as-is', without any express or implied
-  warranty.  In no event will the authors be held liable for any damages
-  arising from the use of this software.
-
-  Permission is granted to anyone to use this software for any purpose,
-  including commercial applications, and to alter it and redistribute it
-  freely, subject to the following restrictions:
-
-  1. The origin of this software must not be misrepresented; you must not
-     claim that you wrote the original software. If you use this software
-     in a product, an acknowledgment in the product documentation would be
-     appreciated but is not required.
-  2. Altered source versions must be plainly marked as such, and must not be
-     misrepresented as being the original software.
-  3. This notice may not be removed or altered from any source distribution.
-
-  "Philip D. Bober" <wildfire1138@mchsi.com>
+/** \file 
+ *  This file contains the interface to the SDL png image save facility.
+ *
+ *  \author Chris &lt;chris@starforge.co.uk&gt;
+ *  \version 0.1
+ *  \date 6 Aug 2010  
  */
-#ifndef __IMG_SAVETOPNG_H__
-#define __IMG_SAVETOPNG_H__
+/*  
+ * Copyright (c) 2010, Chris Page <chris@starforge.co.uk>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, 
+ * are permitted provided that the following conditions are met:
+ *
+ *  * Redistributions of source code must retain the above copyright notice, this 
+ *    list of conditions and the following disclaimer.
+ *
+ *  * Redistributions in binary form must reproduce the above copyright notice, this 
+ *    list of conditions and the following disclaimer in the documentation and/or 
+ *    other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+ * SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) 
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-/* #include <SDL/begin_code.h> */
+#ifndef __IMG_SAVEPNG_
+#define __IMG_SAVEPNG_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define IMG_COMPRESS_OFF 0
-#define IMG_COMPRESS_MAX 9
-#define IMG_COMPRESS_DEFAULT -1
+#include <SDL/SDL.h>
 
-/**
- * Takes a filename, a surface to save, and a compression level.  The
- * compression level can be 0(min) through 9(max), or -1(default).
- */
-DECLSPEC int SDLCALL    IMG_SavePNG(const char  *file,
-                                    SDL_Surface *surf,
-                                    int          compression);
+extern int IMG_SavePNG(const char *filename, SDL_Surface *surf, int compression);
+extern int IMG_SavePNG_RW(SDL_RWops *dest, SDL_Surface *surf, int compression);
 
-DECLSPEC int IMG_SavePNG_NumberIncrease(SDL_Surface *surf,int compression);
-/**
- * Takes a SDL_RWops pointer, a surface to save, and a compression level.
- * compression can be 0(min) through 9(max), or -1(default).
- */
-DECLSPEC int SDLCALL IMG_SavePNG_RW(SDL_RWops   *src,
-                                    SDL_Surface *surf,
-                                    int          compression);
 #ifdef __cplusplus
 }
 #endif
 
-#endif/*__IMG_SAVETOPNG_H__*/
+#endif //#ifndef __IMG_SAVEPNG_
