@@ -73,29 +73,29 @@ void Init_SDL()
 
 int Select_Image_To_Load(void)
 {
-int done=0;
-struct dirent **filelist = {0};
-char *directory = "rotateme";
-char filename[80];
-int file_counter = -1;
-int i = 0;
-int text_xpos=0;
-int text_ypos=34;
-int selectbox_x=0,selectbox_y=0;
-int filenumber=-1;
-int Mousex=0,Mousey=0;
+	int done=0;
+	struct dirent **filelist = {0};
+	char *directory = "rotateme";
+	char filename[80];
+	int file_counter = -1;
+	int i = 0;
+	int text_xpos=0;
+	int text_ypos=34;
+	int selectbox_x=0,selectbox_y=0;
+	int filenumber=-1;
+	int Mousex=0,Mousey=0;
 
-SDL_Rect 	Rect_Mouse,
-            Rect_Close;
+	SDL_Rect 	Rect_Mouse,
+	            Rect_Close;
 
 
-//create an event
-SDL_Event event;
+	//create an event
+	SDL_Event event;
 
-Setup_Rectangle(&Rect_Close,576,0,64,32);
+	Setup_Rectangle(&Rect_Close,576,0,64,32);
 
-//get how many files there are in the directory
-file_counter = scandir(directory, &filelist, 0, alphasort);
+	//get how many files there are in the directory
+	file_counter = scandir(directory, &filelist, 0, alphasort);
 
 	//if there are no files
 	if(file_counter < 0) {
@@ -259,24 +259,24 @@ file_counter = scandir(directory, &filelist, 0, alphasort);
 
 	}
 
-free(filelist);
-return 0;
+	free(filelist);
+	return 0;
 }
 
 int main(int argc, char *argv[])
 {
-int done=0;
-float angle=0;
-Uint8 *keys;
-int update_graphics=TRUE;
-int pixel_offset_8X=1;
-int selected_sprite_view = SELECTED_SPRITE_VIEW_8X;
-char msg[100];
-int fullscreen = FALSE;
-int show_save_msg=FALSE;
-int showcounter=0;
+	int done=0;
+	float angle=0;
+	Uint8 *keys;
+	int update_graphics=TRUE;
+	int pixel_offset_8X=1;
+	int selected_sprite_view = SELECTED_SPRITE_VIEW_8X;
+	char msg[100];
+	int fullscreen = FALSE;
+	int show_save_msg=FALSE;
+	int showcounter=0;
 
-Init_SDL();
+	Init_SDL();
 
     //set window caption
     SDL_WM_SetCaption("SolarStrings Sprite Rotater Version: 0.2",NULL);
@@ -301,16 +301,46 @@ Init_SDL();
     PixelFormat = screen->format;
 
     //create the 2x scaled surface
-    Rotated_2X = SDL_CreateRGBSurface(SDL_HWSURFACE,Image2Rotate->w*2,Image2Rotate->h*2,32,PixelFormat->Rmask,PixelFormat->Gmask,PixelFormat->Bmask,0);
-    SDL_SetColorKey(Rotated_2X,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(Rotated_2X->format,255,0,255));
+    Rotated_2X = SDL_CreateRGBSurface(
+    	SDL_HWSURFACE,
+    	Image2Rotate->w*2,
+    	Image2Rotate->h*2,
+    	32,
+    	PixelFormat->Rmask,
+    	PixelFormat->Gmask,
+    	PixelFormat->Bmask,
+    	PixelFormat->Amask
+	);
+
+    //SDL_SetColorKey(Rotated_2X,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(Rotated_2X->format,255,0,255));
 
     //create the 4x scaled surface
-    Rotated_4X = SDL_CreateRGBSurface(SDL_HWSURFACE,Image2Rotate->w*4,Image2Rotate->h*4,32,PixelFormat->Rmask,PixelFormat->Gmask,PixelFormat->Bmask,0);
-    SDL_SetColorKey(Rotated_4X,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(Rotated_4X->format,255,0,255));
+    Rotated_4X = SDL_CreateRGBSurface(
+    	SDL_HWSURFACE,
+    	Image2Rotate->w*4,
+    	Image2Rotate->h*4,
+    	32,
+    	PixelFormat->Rmask,
+    	PixelFormat->Gmask,
+    	PixelFormat->Bmask,
+    	PixelFormat->Amask
+	);
+
+    //SDL_SetColorKey(Rotated_4X,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(Rotated_4X->format,255,0,255));
 
     //create the 8x scaled surface
-    Rotated_8X = SDL_CreateRGBSurface(SDL_HWSURFACE,Image2Rotate->w*8,Image2Rotate->h*8,32,PixelFormat->Rmask,PixelFormat->Gmask,PixelFormat->Bmask,0);
-    SDL_SetColorKey(Rotated_8X,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(Rotated_8X->format,255,0,255));
+    Rotated_8X = SDL_CreateRGBSurface(
+    	SDL_HWSURFACE,
+    	Image2Rotate->w*8,
+    	Image2Rotate->h*8,
+    	32,
+    	PixelFormat->Rmask,
+    	PixelFormat->Gmask,
+    	PixelFormat->Bmask,
+    	PixelFormat->Amask
+	);
+
+    //SDL_SetColorKey(Rotated_8X,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(Rotated_8X->format,255,0,255));
 
     //create the scaled surfaces
     scale2x(Image2Rotate,Rotated_2X);
@@ -375,19 +405,29 @@ Init_SDL();
                         	PixelFormat->Rmask,
                         	PixelFormat->Gmask,
                         	PixelFormat->Bmask,
-                        	0
+                        	PixelFormat->Amask
                     	);
-                        SDL_SetColorKey(SaveSurface,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(SaveSurface->format,255,0,255));
+
+                        //SDL_SetColorKey(SaveSurface,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(SaveSurface->format,255,0,255));
 
 				        //save the 8X image
 				        sprintf(output_filename,"output/angle%.1f_offset_%d_%s",angle,pixel_offset_8X,only_filename);
-				        Surface_Copy(RotateResult_8X,SaveSurface,0,0,RotateResult_8X->w/8,RotateResult_8X->h/8);
+				        
+				        Surface_Copy(
+				        	RotateResult_8X,
+				        	SaveSurface,
+				        	0,0,
+				        	RotateResult_8X->w/8,
+				        	RotateResult_8X->h/8
+			        	);
+				        
 				        IMG_SavePNG(output_filename,SaveSurface,9);
 
 				        show_save_msg = TRUE;
 				        showcounter=1500;
 				    }
-				}break;
+				}
+				break;
 
 				case SDL_KEYDOWN:
 				{
@@ -482,7 +522,8 @@ Init_SDL();
 					    }
 
 
-				}break;
+				}
+				break;
 			}
 
         }
@@ -586,5 +627,5 @@ Init_SDL();
 		Sulock(screen);
 	}
 
-return 0;
+	return 0;
 }

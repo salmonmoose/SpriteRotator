@@ -137,7 +137,7 @@ if(pixel_offset<=0)
     PixelFormat = src->format;
 
     //create the new surface
-    dest = SDL_CreateRGBSurface(SDL_HWSURFACE,dest_width,dest_height,32,PixelFormat->Rmask,PixelFormat->Gmask,PixelFormat->Bmask,0);
+    dest = SDL_CreateRGBSurface(SDL_HWSURFACE,dest_width,dest_height,32,PixelFormat->Rmask,PixelFormat->Gmask,PixelFormat->Bmask,PixelFormat->Amask);
 
         if(dest == NULL)
         {
@@ -246,7 +246,7 @@ void Draw_Image(SDL_Surface *img,SDL_Surface *where, int x, int y)
   SDL_BlitSurface(img, NULL, where, &dest);
 }
 
-//This cunction copies a portion of a surface to another
+//This function copies a portion of a surface to another
 void Surface_Copy(SDL_Surface *from, SDL_Surface *where,int x,int y,int w,int h)
 {
 	int width=0,height=0;	//width & height of surface
