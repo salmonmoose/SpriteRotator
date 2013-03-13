@@ -1,0 +1,9 @@
+#don't bother with objects
+*.o
+.depend
+
+#don't upload my output stuff
+/output/*
+
+#don't upload bin stuff
+/bin
