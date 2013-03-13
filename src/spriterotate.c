@@ -298,11 +298,11 @@ int main(int argc, char *argv[])
     Image2Rotate = Load_And_Convert_Bitmap(image_filename);
 
     //set pixel format to the format of the screen
-    PixelFormat = screen->format;
+    PixelFormat = Image2Rotate->format;
 
     //create the 2x scaled surface
     Rotated_2X = SDL_CreateRGBSurface(
-    	SDL_HWSURFACE,
+    	SDL_SRCALPHA,
     	Image2Rotate->w*2,
     	Image2Rotate->h*2,
     	32,
@@ -316,7 +316,7 @@ int main(int argc, char *argv[])
 
     //create the 4x scaled surface
     Rotated_4X = SDL_CreateRGBSurface(
-    	SDL_HWSURFACE,
+    	SDL_SRCALPHA,
     	Image2Rotate->w*4,
     	Image2Rotate->h*4,
     	32,
@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
 
     //create the 8x scaled surface
     Rotated_8X = SDL_CreateRGBSurface(
-    	SDL_HWSURFACE,
+    	SDL_SRCALPHA,
     	Image2Rotate->w*8,
     	Image2Rotate->h*8,
     	32,
@@ -398,7 +398,7 @@ int main(int argc, char *argv[])
 
                         //create the save surface
                         SaveSurface = SDL_CreateRGBSurface(
-                        	SDL_HWSURFACE,
+                        	SDL_SRCALPHA,
                         	RotateResult_8X->w/8,
                         	RotateResult_8X->h/8,
                         	32,
@@ -577,7 +577,15 @@ int main(int argc, char *argv[])
                 RotateResult_2X = Rotate_Surface(Rotated_2X,angle,0.5,1);
 
                 //draw the result on screen
-                Draw_Image(RotateResult_2X,TrippleBuffer,320-RotateResult_2X->w/4,220-RotateResult_2X->h/4);
+                if(RotateResult_2X != NULL)
+                {
+	                Draw_Image(
+	                	Rotated_2X,
+	                	TrippleBuffer,
+	                	320-RotateResult_2X->w/4,
+	                	220-RotateResult_2X->h/4
+	            	);
+            	}
             }
 
             if(selected_sprite_view == SELECTED_SPRITE_VIEW_8X)
@@ -592,7 +600,12 @@ int main(int argc, char *argv[])
                 //draw the result on screen if its not a NULL surface
                 if(RotateResult_8X != NULL)
                 {
-                    Draw_Image(RotateResult_8X,TrippleBuffer,320-RotateResult_8X->w/16,220-RotateResult_8X->h/16);
+                    Draw_Image(
+                    	RotateResult_8X,
+                    	TrippleBuffer,
+                    	320-RotateResult_8X->w/16,
+                    	220-RotateResult_8X->h/16
+                	);
                 }
             }
         }

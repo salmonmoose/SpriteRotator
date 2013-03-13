@@ -27,7 +27,7 @@ void Sulock(SDL_Surface *screen)
 //This function clears a surface
 void Clear_Surface(SDL_Surface *dst)
 {
-    SDL_FillRect(dst, NULL, 0x000000);
+    SDL_FillRect(dst, NULL, 0x00444444);
 }
 
 void PutPixel(SDL_Surface* Surface, int x, int y, Uint32 pixel)
@@ -139,7 +139,7 @@ SDL_Surface *Rotate_Surface (SDL_Surface *src, float angle, float scale, int pix
 
     //create the new surface
     dest = SDL_CreateRGBSurface(
-    	SDL_HWSURFACE,
+    	SDL_SRCALPHA,
     	dest_width,
     	dest_height,
     	32,
@@ -224,7 +224,7 @@ FILE *out;
 	if(temp_image != 0)
 	{
 		//convert the surface to displayformat
-		converted_image = SDL_DisplayFormat(temp_image);
+		converted_image = SDL_DisplayFormatAlpha(temp_image);
 
 		//remove surface
 		SDL_FreeSurface(temp_image);
@@ -372,7 +372,14 @@ void Get_Anim(char *file,SDL_Surface *image, SDL_Surface *anim[],int x,int y,int
 			}
 		}
 		//create a surface for each new sprite
-		convert = SDL_CreateRGBSurface(SDL_HWSURFACE,width,height,32,PixelFormat->Rmask,PixelFormat->Gmask,PixelFormat->Bmask,0);
+		convert = SDL_CreateRGBSurface(
+			SDL_HWSURFACE,
+			width,height,32,
+			PixelFormat->Rmask,
+			PixelFormat->Gmask,
+			PixelFormat->Bmask,
+			PixelFormat->Amask
+		);
 		anim[i] = SDL_DisplayFormat(convert);
 
 			//if we could not create a surface
