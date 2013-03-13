@@ -1,0 +1,103 @@
+# depslib dependency file v1.0
+1314154083 source:f:\solarstrings_sprite_rotater\font.c
+	<stdlib.h>
+	<string.h>
+	"SDL/SDL.h"
+	"SDL_image.h"
+	"gfx.h"
+	"font.h"
+
+1314506392 f:\solarstrings_sprite_rotater\gfx.h
+
+1314065968 f:\solarstrings_sprite_rotater\font.h
+
+1314513274 source:f:\solarstrings_sprite_rotater\gfx.c
+	<math.h>
+	"SDL/SDL.h"
+	"SDL_image.h"
+	"gfx.h"
+
+1314066806 source:f:\solarstrings_sprite_rotater\scale2x.c
+	"scale2x.h"
+
+1314069631 f:\solarstrings_sprite_rotater\scale2x.h
+	"SDL/SDL.h"
+
+1284812970 source:f:\solarstrings_sprite_rotater\scandir.c
+	<dirent.h>
+	<stdlib.h>
+	<string.h>
+	<sys/types.h>
+
+1314513409 source:f:\solarstrings_sprite_rotater\spriterotate.c
+	"SDL/SDL.h"
+	"SDL_image.h"
+	"IMG_savepng.h"
+	"gfx.h"
+	"scale2x.h"
+	"dirent.h"
+	"font.h"
+	"scandir.h"
+
+1288933236 f:\solarstrings_sprite_rotater\img_savepng.h
+
+1284812970 f:\solarstrings_sprite_rotater\scandir.h
+
+1314154068 source:f:\solarstrings_sprite_rotater\img_savepng.c
+	<stdlib.h>
+	<SDL/SDL.h>
+	<SDL/SDL_byteorder.h>
+	<png.h>
+	"IMG_savepng.h"
+
+1314154083 source:f:\solarstrings_sprite_rotater_v01b\font.c
+	<stdlib.h>
+	<string.h>
+	"SDL/SDL.h"
+	"SDL_image.h"
+	"gfx.h"
+	"font.h"
+
+1314123310 f:\solarstrings_sprite_rotater_v01b\gfx.h
+
+1314065968 f:\solarstrings_sprite_rotater_v01b\font.h
+
+1314154097 source:f:\solarstrings_sprite_rotater_v01b\gfx.c
+	<math.h>
+	"SDL/SDL.h"
+	"SDL_image.h"
+	"gfx.h"
+
+1314066806 source:f:\solarstrings_sprite_rotater_v01b\scale2x.c
+	"scale2x.h"
+
+1314069631 f:\solarstrings_sprite_rotater_v01b\scale2x.h
+	"SDL/SDL.h"
+
+1314242217 source:f:\solarstrings_sprite_rotater_v01b\spriterotate.c
+	"SDL/SDL.h"
+	"SDL_image.h"
+	"IMG_savepng.h"
+	"gfx.h"
+	"scale2x.h"
+	"dirent.h"
+	"font.h"
+	"scandir.h"
+
+1288933236 f:\solarstrings_sprite_rotater_v01b\img_savepng.h
+
+1284812970 f:\solarstrings_sprite_rotater_v01b\scandir.h
+
+1314154068 source:f:\solarstrings_sprite_rotater_v01b\img_savepng.c
+	<stdlib.h>
+	<SDL/SDL.h>
+	<SDL/SDL_byteorder.h>
+	<png.h>
+	"IMG_savepng.h"
+
+1284812970 source:f:\solarstrings_sprite_rotater_v01b\scandir.c
+	<dirent.h>
+	<stdlib.h>
+	<string.h>
+	<sys/types.h>
+
