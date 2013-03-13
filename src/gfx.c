@@ -84,17 +84,17 @@ Uint32 GetPixel(SDL_Surface* Surface, int x, int y)
     }
 }
 //this function will rotate a surface (a bit slow, but ok for our purpose)
-SDL_Surface *Rotate_Surface (SDL_Surface *src,float angle, float scale,int pixel_offset)
+SDL_Surface *Rotate_Surface (SDL_Surface *src, float angle, float scale, int pixel_offset)
 {
-int x=0,y=0;
-float sourcex=0,sourcey=0;
+	int x=0,y=0;
+	float sourcex=0,sourcey=0;
 
-//make sure the pixel offset is above zero
-//otherwise the for loops for scaling the image won't work.
-if(pixel_offset<=0)
-{
-    pixel_offset=1;
-}
+	//make sure the pixel offset is above zero
+	//otherwise the for loops for scaling the image won't work.
+	if(pixel_offset<=0)
+	{
+	    pixel_offset=1;
+	}
 
     //convert angle to radians
     float radians = (angle*2*PI) / 360;
@@ -117,18 +117,19 @@ if(pixel_offset<=0)
     float maxx=max(Point1x,max(Point2x,Point3x));
     float maxy=max(Point1y,max(Point2y,Point3y));
 
-		if(angle>90 && angle<180)
-		{
+	if(angle>90 && angle<180)
+	{
 		maxx=0;
-		}
-		if(angle>180 && angle<270)
-		{
-		maxy=0;
-		}
+	}
 
-        //calculate the destination image width & height
-        int dest_width = (int)ceil(abs(maxx) - minx);
-        int dest_height = (int)ceil(abs(maxy) - miny);
+	if(angle>180 && angle<270)
+	{
+		maxy=0;
+	}
+
+    //calculate the destination image width & height
+    int dest_width = (int)ceil(abs(maxx) - minx);
+    int dest_height = (int)ceil(abs(maxy) - miny);
 
     // the destination surface
     SDL_Surface *dest;
@@ -137,46 +138,63 @@ if(pixel_offset<=0)
     PixelFormat = src->format;
 
     //create the new surface
-    dest = SDL_CreateRGBSurface(SDL_HWSURFACE,dest_width,dest_height,32,PixelFormat->Rmask,PixelFormat->Gmask,PixelFormat->Bmask,PixelFormat->Amask);
+    dest = SDL_CreateRGBSurface(
+    	SDL_HWSURFACE,
+    	dest_width,
+    	dest_height,
+    	32,
+    	PixelFormat->Rmask,
+    	PixelFormat->Gmask,
+    	PixelFormat->Bmask,
+    	PixelFormat->Amask
+	);
 
-        if(dest == NULL)
+    if(dest == NULL)
+    {
+
+    }
+    else
+    {
+        Slock(dest);
+
+        //fill it with magenta
+        //SDL_FillRect(dest, NULL, 0xff00ff);
+
+        //set transparent color to magenta
+        //SDL_SetColorKey(dest,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(dest->format,255,0,255));
+
+        Sulock(dest);
+
+        //lock the source surface
+        Slock(src);
+
+        //loop through the image
+        for(x=0;x<dest_width;x+=pixel_offset)
         {
-
-        }
-        else
-        {
-
-            Slock(dest);
-
-            //fill it with magenta
-            SDL_FillRect(dest, NULL, 0xff00ff);
-
-            //set transparent color to magenta
-            SDL_SetColorKey(dest,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(dest->format,255,0,255));
-
-            Sulock(dest);
-
-            //lock the source surface
-            Slock(src);
-
-            //loop through the image
-            for(x=0;x<dest_width;x+=pixel_offset)
+            for(y=0;y<dest_height;y+=pixel_offset)
             {
-                for(y=0;y<dest_height;y+=pixel_offset)
-                {
-                    //calculate the new pixel we want to copy
-                    sourcex=((x+minx)*cosine+(y+miny)*sine);
-                    sourcey=((y+miny)*cosine-(x+minx)*sine);
+                //calculate the new pixel we want to copy
+                sourcex=((x+minx)*cosine+(y+miny)*sine);
+                sourcey=((y+miny)*cosine-(x+minx)*sine);
 
-                    //if the pixel exist on the src surface
-                    if(sourcex >=0 && sourcex <src->w && sourcey >=0 && sourcey < src->h)
-                    {
-                        //get it from the src surface and place it on the dest surface
-                        //multipy with scale
-                        PutPixel(dest,x*scale,y*scale,GetPixel(src,sourcex,sourcey));
-                    }
+                //if the pixel exist on the src surface
+                if(sourcex >=0 && sourcex < src->w && sourcey >= 0 && sourcey < src->h)
+                {
+                    //get it from the src surface and place it on the dest surface
+                    //multipy with scale
+                    PutPixel(
+                    	dest,
+                    	x*scale,
+                    	y*scale,
+                    	GetPixel(
+                    		src,
+                    		sourcex,
+                    		sourcey
+                		)
+                	);
                 }
             }
+        }
 
         //unlock the source surface
         Sulock(src);
@@ -202,33 +220,33 @@ FILE *out;
 	//load the image
 	temp_image = IMG_Load(file);
 
-		//if we could load the image
-		if(temp_image != 0)
+	//if we could load the image
+	if(temp_image != 0)
+	{
+		//convert the surface to displayformat
+		converted_image = SDL_DisplayFormat(temp_image);
+
+		//remove surface
+		SDL_FreeSurface(temp_image);
+	}
+	//if we could not load the file
+	else
+	{
+		//open error.txt
+		out = fopen( "error.txt", "wb" );
+
+		//if all is ok
+		if( out != NULL )
 		{
-			//convert the surface to displayformat
-			converted_image = SDL_DisplayFormat(temp_image);
+			//write what went wrong
+			fprintf(out,"Could not load image:%s\n",file);
 
-			//remove surface
-			SDL_FreeSurface(temp_image);
+			//close the file
+			fclose(out);
 		}
-		//if we could not load the file
-		else
-		{
-			//open error.txt
-			out = fopen( "error.txt", "wb" );
-
-			//if all is ok
-			if( out != NULL )
-			{
-				//write what went wrong
-				fprintf(out,"Could not load image:%s\n",file);
-
-				//close the file
-				fclose(out);
-			}
-		//exit the program
-		exit(1);
-		}
+	//exit the program
+	exit(1);
+	}
 
 	//return the converted image
 	return converted_image;
@@ -237,13 +255,13 @@ FILE *out;
 //this function will draw an image on the desired surface
 void Draw_Image(SDL_Surface *img,SDL_Surface *where, int x, int y)
 {
-  //set up the destination rectangle
-  SDL_Rect dest;
-  dest.x = x;
-  dest.y = y;
+	//set up the destination rectangle
+	SDL_Rect dest;
+	dest.x = x;
+	dest.y = y;
 
-  //Draw it on the screen
-  SDL_BlitSurface(img, NULL, where, &dest);
+	//Draw it on the screen
+	SDL_BlitSurface(img, NULL, where, &dest);
 }
 
 //This function copies a portion of a surface to another
@@ -385,17 +403,17 @@ void Get_Anim(char *file,SDL_Surface *image, SDL_Surface *anim[],int x,int y,int
 		//go to next sprite in the image
 		x+=width+grid_width;
 	}
-//free the allocated memory
-SDL_FreeSurface(image);
-SDL_FreeSurface(convert);
+	//free the allocated memory
+	SDL_FreeSurface(image);
+	SDL_FreeSurface(convert);
 }
 
 void Setup_Rectangle(SDL_Rect *Rect,int x,int y,int width,int height)
 {
-Rect->x=x;
-Rect->y=y;
-Rect->w=width;
-Rect->h=height;
+	Rect->x=x;
+	Rect->y=y;
+	Rect->w=width;
+	Rect->h=height;
 }
 
 //this function checks if two boxes have collided
