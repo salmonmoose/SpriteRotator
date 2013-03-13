@@ -84,10 +84,12 @@ Uint32 GetPixel(SDL_Surface* Surface, int x, int y)
     }
 }
 //this function will rotate a surface (a bit slow, but ok for our purpose)
-SDL_Surface *Rotate_Surface (SDL_Surface *src, float angle, float scale, int pixel_offset)
+SDL_Surface *Rotate_Surface (SDL_Surface *src, float angle, int zoom, int pixel_offset)
 {
 	int x=0,y=0;
 	float sourcex=0,sourcey=0;
+
+	float scale = 1.f / zoom;
 
 	//make sure the pixel offset is above zero
 	//otherwise the for loops for scaling the image won't work.
@@ -140,8 +142,8 @@ SDL_Surface *Rotate_Surface (SDL_Surface *src, float angle, float scale, int pix
     //create the new surface
     dest = SDL_CreateRGBSurface(
     	SDL_SRCALPHA,
-    	dest_width,
-    	dest_height,
+    	dest_width / zoom,
+    	dest_height / zoom,
     	32,
     	PixelFormat->Rmask,
     	PixelFormat->Gmask,
@@ -253,7 +255,7 @@ FILE *out;
 }
 
 //this function will draw an image on the desired surface
-void Draw_Image(SDL_Surface *img,SDL_Surface *where, int x, int y)
+void Draw_Image(SDL_Surface * img, SDL_Surface * where, int x, int y)
 {
 	//set up the destination rectangle
 	SDL_Rect dest;
@@ -265,46 +267,43 @@ void Draw_Image(SDL_Surface *img,SDL_Surface *where, int x, int y)
 }
 
 //This function copies a portion of a surface to another
-void Surface_Copy(SDL_Surface *from, SDL_Surface *where,int x,int y,int w,int h)
+void Surface_Copy(SDL_Surface * from, SDL_Surface * where, int x, int y, int w, int h)
 {
-	int width=0,height=0;	//width & height of surface
-	width = w-x;		    //calculate width
-	height=h-y;		        //calculate height
-
 	//Rectangle of the original surface
-	SDL_Rect Rsrc;
-	Rsrc.x=x;
-	Rsrc.y=y;
-	Rsrc.w=w;
-	Rsrc.h=h;
+	SDL_Rect source;
+	source.x = x;
+	source.y = y;
+	source.w = w;
+	source.h = h;
 
 	//Rectangle of the new surface
-	SDL_Rect Rdst;
-	Rdst.x=0;
-	Rdst.y=0;
-	Rdst.w=width;
-	Rdst.h=height;
+	SDL_Rect destination;
+	destination.x = 0;
+	destination.y = 0;
 
-		//make the copy
-	SDL_BlitSurface(from, &Rsrc, where, &Rdst);
+	//make the copy
+	if(SDL_BlitSurface(from, & source, where, & destination) < 0)
+	{
+		printf("Blit Error\n");
+	}
 }
 
-void Create_tripple_buffer(int width,int height)
+void Create_triple_buffer(int width,int height)
 {
 FILE *out;
 
 	PixelFormat = screen->format;
 
-	TrippleBuffer = SDL_CreateRGBSurface(SDL_HWSURFACE,width,height,32,PixelFormat->Rmask,PixelFormat->Gmask,PixelFormat->Bmask,0);
+	TripleBuffer = SDL_CreateRGBSurface(SDL_HWSURFACE,width,height,32,PixelFormat->Rmask,PixelFormat->Gmask,PixelFormat->Bmask,0);
 
-		if(TrippleBuffer==NULL)
+		if(TripleBuffer==NULL)
 		{
 
 			out = fopen( "Error.txt", "w" );
 
 			if( out != NULL )
 			{
-				fprintf(out,"could not create tripple buffer\n");
+				fprintf(out,"could not create triple buffer\n");
 
 				fclose(out);
 			}

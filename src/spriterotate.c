@@ -63,7 +63,7 @@ void Init_SDL()
 			exit(1);
 		}
 
-    Create_tripple_buffer(640,480);
+    Create_triple_buffer(640,480);
 
     for(i=0;i<NUM_CHARACTERS;i++)
     {
@@ -175,13 +175,13 @@ int Select_Image_To_Load(void)
 		//lock screen surface
 		Slock(screen);
 
-            Clear_Surface(TrippleBuffer);
+            Clear_Surface(TripleBuffer);
 
 			//draw the topbar
-			Draw_Image(TempImage,TrippleBuffer,0,0);
+			Draw_Image(TempImage,TripleBuffer,0,0);
 
 			//tell the user what to do
-			Font_String(14,13,"Select which image you want to rotate.",TrippleBuffer,font_clean,cleanfont_space);
+			Font_String(14,13,"Select which image you want to rotate.",TripleBuffer,font_clean,cleanfont_space);
 
 			//set text x & y position
 			text_xpos=0; text_ypos=34;
@@ -194,7 +194,7 @@ int Select_Image_To_Load(void)
 					sprintf(filename,"%s",filelist[i]->d_name);
 
 						//display it on screen
-						Font_String(text_xpos,text_ypos,filename,TrippleBuffer,font_clean,cleanfont_space);
+						Font_String(text_xpos,text_ypos,filename,TripleBuffer,font_clean,cleanfont_space);
 
 						//move 10 pixels down to next row
 						text_ypos+=10;
@@ -245,11 +245,11 @@ int Select_Image_To_Load(void)
 				if(Mousey>34 && Mousey<469 && Mousex<623)
 				{
 					//draw the selection box
-					Draw_Image(GFX_Select_Box,TrippleBuffer,selectbox_x,selectbox_y);
+					Draw_Image(GFX_Select_Box,TripleBuffer,selectbox_x,selectbox_y);
 				}
 
-            //copy the tripple buffer to screen
-            Surface_Copy(TrippleBuffer,screen,0,0,640,480);
+            //copy the triple buffer to screen
+            Surface_Copy(TripleBuffer,screen,0,0,640,480);
 
 			//flip the screen
 			SDL_Flip(screen);
@@ -394,13 +394,18 @@ int main(int argc, char *argv[])
 				    {
 
                         //create the rotated surface from the 8x scale2x surface
-                        RotateResult_8X = Rotate_Surface(Rotated_8X,angle,0.125,pixel_offset_8X);
+                        RotateResult_8X = Rotate_Surface(
+                        	Rotated_8X,
+                        	angle,
+                        	8,
+                        	pixel_offset_8X
+                    	);
 
                         //create the save surface
                         SaveSurface = SDL_CreateRGBSurface(
-                        	SDL_SRCALPHA,
-                        	RotateResult_8X->w/8,
-                        	RotateResult_8X->h/8,
+                        	SDL_HWSURFACE,
+                        	RotateResult_8X->w,// / 8,
+                        	RotateResult_8X->h,// / 8,
                         	32,
                         	PixelFormat->Rmask,
                         	PixelFormat->Gmask,
@@ -411,18 +416,22 @@ int main(int argc, char *argv[])
                         //SDL_SetColorKey(SaveSurface,SDL_SRCCOLORKEY|SDL_RLEACCEL,SDL_MapRGB(SaveSurface->format,255,0,255));
 
 				        //save the 8X image
-				        sprintf(output_filename,"output/angle%.1f_offset_%d_%s",angle,pixel_offset_8X,only_filename);
+				        sprintf(
+				        	output_filename,
+				        	"output/angle%.1f_offset_%d_%s",
+				        	angle,
+				        	pixel_offset_8X,
+				        	only_filename
+			        	);
 				        
 				        Surface_Copy(
 				        	RotateResult_8X,
 				        	SaveSurface,
-				        	0,0,
-				        	RotateResult_8X->w/8,
-				        	RotateResult_8X->h/8
+							0,0,
+				        	512,512
 			        	);
 				        
-				        //IMG_SavePNG(output_filename, SaveSurface,9);
-				        //IMG_SavePNG(output_filename, Image2Rotate, 9);
+				        //IMG_SavePNG(output_filename, SaveSurface, 9);
 				        IMG_SavePNG(output_filename, RotateResult_8X, 9);
 
 				        show_save_msg = TRUE;
@@ -565,8 +574,8 @@ int main(int argc, char *argv[])
         //if it's time to update the graphics
         if(update_graphics == TRUE)
         {
-            //clear the tripple buffer
-            Clear_Surface(TrippleBuffer);
+            //clear the triple buffer
+            Clear_Surface(TripleBuffer);
 
             if(selected_sprite_view == SELECTED_SPRITE_VIEW_2X)
             {
@@ -576,14 +585,14 @@ int main(int argc, char *argv[])
                 }
 
                 //create the rotated surface from the 2x scale2x surface
-                RotateResult_2X = Rotate_Surface(Rotated_2X,angle,0.5,1);
+                RotateResult_2X = Rotate_Surface(Rotated_2X,angle,2,1);
 
                 //draw the result on screen
                 if(RotateResult_2X != NULL)
                 {
 	                Draw_Image(
 	                	Rotated_2X,
-	                	TrippleBuffer,
+	                	TripleBuffer,
 	                	320-RotateResult_2X->w/4,
 	                	220-RotateResult_2X->h/4
 	            	);
@@ -597,22 +606,22 @@ int main(int argc, char *argv[])
                     SDL_FreeSurface(RotateResult_8X);
                 }
                 //create the rotated surface from the 2x scale2x surface
-                RotateResult_8X = Rotate_Surface(Rotated_8X,angle,0.125,pixel_offset_8X);
+                RotateResult_8X = Rotate_Surface(Rotated_8X,angle,8,pixel_offset_8X);
 
                 //draw the result on screen if its not a NULL surface
                 if(RotateResult_8X != NULL)
                 {
                     Draw_Image(
                     	RotateResult_8X,
-                    	TrippleBuffer,
+                    	TripleBuffer,
                     	320-RotateResult_8X->w/16,
                     	220-RotateResult_8X->h/16
                 	);
                 }
             }
         }
-            //copy the tripple buffer to screen
-            Surface_Copy(TrippleBuffer,screen,0,0,640,480);
+            //copy the triple buffer to screen
+            Surface_Copy(TripleBuffer,screen,0,0,640,480);
 
             sprintf(msg,"Left/Right = rotate image, S = save,F4 = Toggle Fullscreen, ESC = quit");
             Font_String(0,0,msg,screen,font_clean,cleanfont_space);

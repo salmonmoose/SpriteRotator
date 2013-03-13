@@ -10,7 +10,7 @@
 SDL_Surface *screen;			//screen surface
 SDL_Surface *TempImage;			//temporary surface to loading graphics
 SDL_PixelFormat *PixelFormat;	//what pixelformat that is being used (24bpp, 32bpp etc)
-SDL_Surface *TrippleBuffer;     //the tripple buffer
+SDL_Surface *TripleBuffer;     //the tripple buffer
 
 SDL_Surface *Image2Rotate;      //the image we load in to rotate
 SDL_Surface *Rotated_2X;        //the scale2x 2x version of the rotated image
@@ -47,13 +47,13 @@ void Draw_Image(SDL_Surface *img,SDL_Surface *where, int x, int y);
 SDL_Surface *Load_And_Convert_Bitmap(char *file);
 
 //this function will rotate a surface (a bit slow, but ok for our purpose)
-SDL_Surface *Rotate_Surface (SDL_Surface *src,float angle, float scale,int pixel_offset);
+SDL_Surface *Rotate_Surface (SDL_Surface *src,float angle, int zoom,int pixel_offset);
 
 //This cunction copies a portion of a surface to another
 void Surface_Copy(SDL_Surface *from, SDL_Surface *where,int x,int y,int w,int h);
 
-//This function creates the tripple buffer
-void Create_tripple_buffer(int width,int height);
+//This function creates the triple buffer
+void Create_triple_buffer(int width,int height);
 
 //This function clips many sprites and place them in an array
 void Get_Anim(char *file,SDL_Surface *image, SDL_Surface *anim[],int x,int y,int w,int h,int num_frames, int num_sprites_per_line,int grid_width);
